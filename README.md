@@ -7,5 +7,18 @@
 3. Установить pysc2 (*https://github.com/deepmind/pysc2*)
 4. Скачать Мини игры по ссылке где лежит pysc2
 
+### Агенты
+1. RandomAgent - агент с автодействиями, взятый в качестве примера с pysc2
+2. ScriptAgent MoveToBeacon - агент, который решает задачу MoveToBeacon (просто программирование)
+3. Q-Learning Agent MoveToBeacon - агент, который решает задачу MoveToBeacon с помощью метода Q-learning (Reinforsment learning)
+4. ScriptAgent CollectMineralShards - агент, который умеет собирать ресрусы
+5. Q-learning Agent CollectMineralShards - агент, который умеет собирать ресурсы с помощью метода Q-learning
+
 ## Запуск
- *python -m pysc2.bin.agent --map MoveToBeacon --agent moveToBacon.MoveToBaconScriptAgent* - данная команда запустит игру на карте MoveToBeacon с агентом MoveToBaconScriptAgent из файла moveToBacon. Запуск происходит в папке moveToBacon
+ *python -m pysc2.bin.agent --map MoveToBeacon --agent moveToBacon.MoveToBaconScriptAgent* - данная команда запустит игру на карте MoveToBeacon с агентом MoveToBaconScriptAgent из файла moveToBacon. Запуск происходит в папке agents
+1. python -m pysc2.bin.agent --map MoveToBeacon --agent randomAgent.RandomAgent
+2. python -m pysc2.bin.agent --map MoveToBeacon --agent moveToBacon.MoveToBaconScriptAgent
+3. python -m pysc2.bin.agent --map MoveToBeacon --agent learningMoveToBeacon.LearningAgent
+4. python -m pysc2.bin.agent --map CollectMineralShards --agent CollectMinerals.CollectMineralShards
+5. python -m pysc2.bin.agent --map CollectMineralShards --agent learningCollectMinerals.LearningAgent
+

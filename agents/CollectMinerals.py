@@ -10,7 +10,6 @@ from pysc2.lib import features
 
 _PLAYER_SELF = features.PlayerRelative.SELF
 _PLAYER_NEUTRAL = features.PlayerRelative.NEUTRAL  # beacon/minerals
-_PLAYER_ENEMY = features.PlayerRelative.ENEMY
 
 FUNCTIONS = actions.FUNCTIONS
 
