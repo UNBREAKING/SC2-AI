@@ -13,6 +13,8 @@
 3. Q-Learning Agent MoveToBeacon - агент, который решает задачу MoveToBeacon с помощью метода Q-learning (Reinforsment learning)
 4. ScriptAgent CollectMineralShards - агент, который умеет собирать ресрусы
 5. Q-learning Agent CollectMineralShards - агент, который умеет собирать ресурсы с помощью метода Q-learning
+6. Script Agent DefeatRoaches - агент для мини игры: где есть отряд морпехов и надо победить отряд монстров
+7. Q-learning Agent DefeatRoaches - not ready
 
 ## Запуск
  *python -m pysc2.bin.agent --map MoveToBeacon --agent moveToBacon.MoveToBaconScriptAgent* - данная команда запустит игру на карте MoveToBeacon с агентом MoveToBaconScriptAgent из файла moveToBacon. Запуск происходит в папке agents
@@ -21,4 +23,4 @@
 3. python -m pysc2.bin.agent --map MoveToBeacon --agent learningMoveToBeacon.LearningAgent
 4. python -m pysc2.bin.agent --map CollectMineralShards --agent CollectMinerals.CollectMineralShards
 5. python -m pysc2.bin.agent --map CollectMineralShards --agent learningCollectMinerals.LearningAgent
-
+6. python -m pysc2.bin.agent --map DefeatRoaches --agent defeatRoaches.DefeatRoaches
