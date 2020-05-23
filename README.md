@@ -24,3 +24,4 @@
 4. python -m pysc2.bin.agent --map CollectMineralShards --agent CollectMinerals.CollectMineralShards
 5. python -m pysc2.bin.agent --map CollectMineralShards --agent learningCollectMinerals.LearningAgent
 6. python -m pysc2.bin.agent --map DefeatRoaches --agent defeatRoaches.DefeatRoaches
+7. python -m pysc2.bin.agent --map CollectMineralsAndGas --agent learningCollectMineralsAndGas.SmartAgent
