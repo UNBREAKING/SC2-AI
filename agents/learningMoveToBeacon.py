@@ -8,6 +8,7 @@ from pysc2.lib import actions
 from pysc2.lib import features
 
 from QLearningTable import QLearningTable
+from RewardCollector import RewardCollector
 
 FUNCTIONS = actions.FUNCTIONS
 
@@ -49,7 +50,8 @@ class LearningAgent(base_agent.BaseAgent):
     def __init__(self):
         super(LearningAgent, self).__init__()
 
-        self.qlearn = QLearningTable(actions=list(range(len(smart_actions))))
+        self.qlearn = QLearningTable(actions=list(range(len(smart_actions))), load_qt = 'learningMoveToBeacon.csv')
+        self.rewardTable = RewardCollector('learningMoveToBeaconReward.csv')
 
         self.previous_score = 0
         self.reward = 0
@@ -59,10 +61,16 @@ class LearningAgent(base_agent.BaseAgent):
         self.previous_state = None
 
     def reset(self):
+        self.qlearn.save_qtable('learningMoveToBeacon.csv')
+        self.rewardTable.collectReward(self.previous_score)
+        self.rewardTable.save_table('learningMoveToBeaconReward.csv')
         self.episodes += 1
+        self.previous_score = 0
 
     def step(self, obs):
         super(LearningAgent, self).step(obs)
+        
+        self.previous_score += obs.reward
 
         state, beacon_loc = get_state(obs)
         current_state = [state[0], state[1]]
@@ -73,12 +81,10 @@ class LearningAgent(base_agent.BaseAgent):
             if state[1] > 0 :
                 self.reward += BEACON_REWARD
 
-            self.previous_score = self.reward
-
             self.qlearn.learn(str(self.previous_state), self.previous_action, self.reward, str(current_state))
 
         action = self.qlearn.choose_action(str(current_state))
-        smart_action = smart_actions[action]
+        smart_action = smart_actions[int(action)]
 
         self.previous_state = current_state
         self.previous_action = action

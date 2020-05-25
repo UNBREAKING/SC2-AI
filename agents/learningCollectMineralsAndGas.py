@@ -8,6 +8,7 @@ from pysc2.lib import actions
 from pysc2.lib import features
 
 from QLearningTable import QLearningTable
+from RewardCollector import RewardCollector
 
 # Units Ids
 MINERALFIELD = 341
@@ -107,7 +108,9 @@ class SmartAgent(base_agent.BaseAgent):
     def __init__(self):
         super(SmartAgent, self).__init__()
 
-        self.qlearn = QLearningTable(actions=list(range(len(smart_actions))))
+        self.qlearn = QLearningTable(actions=list(range(len(smart_actions))), load_qt= 'learningCollectMineralsAndGas.csv')
+        self.rewardTable = RewardCollector('learningCollectMineralsAndGasReward.csv')
+
 
         self.previous_score = 0
         self.episodes = 0
@@ -120,6 +123,10 @@ class SmartAgent(base_agent.BaseAgent):
         self.previous_state = None
     
     def reset(self):
+        self.qlearn.save_qtable('learningCollectMineralsAndGas.csv')
+        self.rewardTable.collectReward(self.previous_score)
+        self.rewardTable.save_table('learningCollectMineralsAndGasReward.csv')
+        self.previous_score = 0
         self.episodes += 1
         self.previous_mineral_count = 0
         self.previous_gas_count = 0
@@ -128,6 +135,9 @@ class SmartAgent(base_agent.BaseAgent):
 
     def step(self, obs):
         super(SmartAgent, self).step(obs)
+
+        self.previous_score = obs.reward
+
 
         state, playerInformation, mineralsPosition, targetVespine, targetTerranCenter, targetForBuild, targetScv = get_state(obs)
         current_state = [state[0], state[1], state[2], state[3], state[4]]
@@ -146,13 +156,11 @@ class SmartAgent(base_agent.BaseAgent):
 
             if playerInformation[4] < self.previous_idle_workers:
                 reward += REWARD_SCV_BUSY
-
-            self.previous_score = reward
-
+            
             self.qlearn.learn(str(self.previous_state), self.previous_action, reward, str(current_state))
 
         action = self.qlearn.choose_action(str(current_state))
-        smart_action = smart_actions[action]
+        smart_action = smart_actions[int(action)]
 
         self.previous_gas_count = playerInformation[0]
         self.previous_mineral_count = playerInformation[1]

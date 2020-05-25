@@ -1,14 +1,25 @@
 import numpy as np
 import pandas as pd
 import math
+import os.path
+from os import path
 
 class QLearningTable:
-    def __init__(self, actions, learning_rate=0.01, reward_decay=0.9, e_greedy=0.9):
+    def __init__(self, actions, learning_rate=0.01, reward_decay=0.9, e_greedy=0.9, load_qt=None):
         self.actions = actions  # a list?
         self.lr = learning_rate
         self.gamma = reward_decay
         self.epsilon = e_greedy
-        self.q_table = pd.DataFrame(columns=self.actions, dtype=np.float64)
+
+        self.q_table = self.load_qtable(load_qt) if path.exists(load_qt) else pd.DataFrame(columns=self.actions, dtype=np.float64)
+        self.q_table.index.name = 'state'
+        print(self.q_table)
+
+    def save_qtable(self, filepath):
+        self.q_table.to_csv(filepath)
+        
+    def load_qtable(self, filepath):
+        return pd.read_csv(filepath,  index_col = 0)
 
     def choose_action(self, observation):
         self.check_state_exist(observation)

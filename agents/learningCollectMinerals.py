@@ -8,6 +8,7 @@ from pysc2.lib import actions
 from pysc2.lib import features
 
 from QLearningTable import QLearningTable
+from RewardCollector import RewardCollector
 
 FUNCTIONS = actions.FUNCTIONS
 
@@ -55,7 +56,8 @@ class LearningAgent(base_agent.BaseAgent):
     def __init__(self):
         super(LearningAgent, self).__init__()
 
-        self.qlearn = QLearningTable(actions=list(range(len(smart_actions))))
+        self.qlearn = QLearningTable(actions=list(range(len(smart_actions))), load_qt = 'learningCollectMinerals.csv')
+        self.rewardTable = RewardCollector('learningCollectMineralsReward.csv')
 
         self.previous_score = 0
         self.episodes = 0
@@ -64,10 +66,16 @@ class LearningAgent(base_agent.BaseAgent):
         self.previous_state = None
     
     def reset(self):
+        self.qlearn.save_qtable('learningCollectMinerals.csv')
+        self.rewardTable.collectReward(self.previous_score)
+        self.rewardTable.save_table('learningCollectMineralsReward.csv')
         self.episodes += 1
+        self.previous_score = 0
 
     def step(self, obs):
         super(LearningAgent, self).step(obs)
+
+        self.previous_score += obs.reward
 
         state, minerals_loc = get_state(obs)
         current_state = [state[0], state[1]]
@@ -78,12 +86,10 @@ class LearningAgent(base_agent.BaseAgent):
             if state[1] > 0 :
                 reward += MINERALS_REWARD
 
-            self.previous_score = reward
-
             self.qlearn.learn(str(self.previous_state), self.previous_action, reward, str(current_state))
 
         action = self.qlearn.choose_action(str(current_state))
-        smart_action = smart_actions[action]
+        smart_action = smart_actions[int(action)]
 
         self.previous_state = current_state
         self.previous_action = action
