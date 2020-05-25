@@ -71,20 +71,21 @@ def get_state(obs):
     unit_type = obs.observation.feature_screen[UNIT_TYPE]
     playerInformation = obs.observation['player']
 
+    mineral_count = playerInformation[1]
+    vispen_count = playerInformation[2]
+    supply_limit = playerInformation[4]
+    scv_count = playerInformation[6]
+    idle_workers = playerInformation[7]
+
     player_y, player_x = (obs.observation.feature_screen[_AI_RELATIVE] == _AI_SELF).nonzero()
     base_top_left = 1 if player_y.any() and player_y.mean() <= 31 else 0
 
     canSelectWorker = 1 if SELECT_IDLE_WORKER in obs.observation['available_actions'] else 0
     canGather = 1 if GATHER in obs.observation['available_actions'] else 0
     canBuildRefinery = 1  if BUILD_REFINERY in obs.observation['available_actions'] else 0
-    canTrainScv = 1 if TRAIN_SCV in obs.observation['available_actions'] else 0
+    canTrainScv = 1 if TRAIN_SCV in obs.observation['available_actions'] and supply_limit > scv_count else 0
     canBuildSupplyDepot = 1 if BUILD_SUPPLY_DEPOT in obs.observation['available_actions'] else 0
-
-    mineral_count = playerInformation[1]
-    vispen_count = playerInformation[2]
-    supply_limit = playerInformation[4]
-    scv_count = playerInformation[6]
-    idle_workers = playerInformation[7]
+    hasIdleWorkers = 1 if idle_workers > 0 else 0
 
     mineral = (unit_type == MINERALFIELD)
     vespine = (unit_type == GEYSER)
@@ -102,7 +103,7 @@ def get_state(obs):
       i = random.randint(0, len(scv_y) - 1)
       targetScv = [scv_x[i], scv_y[i]]
 
-    return (canSelectWorker, canGather, canBuildRefinery, canTrainScv, canBuildSupplyDepot), (mineral_count, vispen_count, supply_limit, scv_count, idle_workers), (mineral_y, mineral_x), targetVespine, targetTerranCenter, targetForBuild, targetScv
+    return (canSelectWorker, canGather, canBuildRefinery, canTrainScv, canBuildSupplyDepot, hasIdleWorkers), (mineral_count, vispen_count, supply_limit, scv_count, idle_workers), (mineral_y, mineral_x), targetVespine, targetTerranCenter, targetForBuild, targetScv
 
 class SmartAgent(base_agent.BaseAgent):
     def __init__(self):
@@ -140,7 +141,7 @@ class SmartAgent(base_agent.BaseAgent):
 
 
         state, playerInformation, mineralsPosition, targetVespine, targetTerranCenter, targetForBuild, targetScv = get_state(obs)
-        current_state = [state[0], state[1], state[2], state[3], state[4]]
+        current_state = [state[0], state[1], state[2], state[3], state[4], state[5]]
 
         if self.previous_action is not None:
             reward = 0
