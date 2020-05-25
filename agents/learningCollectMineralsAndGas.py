@@ -189,7 +189,7 @@ class SmartAgent(base_agent.BaseAgent):
             return actions.FunctionCall(BUILD_SUPPLY_DEPOT, [SCREEN, targetForBuild])
         
         elif smart_action == ACTION_SELECT_SCV:
-          if targetScv:
-            return actions.FunctionCall(SELECT_POINT, [SCREEN, targetForBuild])
+          if targetScv and state[0] == 1:
+            return actions.FunctionCall(SELECT_POINT, [SCREEN, targetScv])
 
         return FUNCTIONS.no_op()
