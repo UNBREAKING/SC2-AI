@@ -137,9 +137,6 @@ class SmartAgent(base_agent.BaseAgent):
     def step(self, obs):
         super(SmartAgent, self).step(obs)
 
-        self.previous_score = obs.reward
-
-
         state, playerInformation, mineralsPosition, targetVespine, targetTerranCenter, targetForBuild, targetScv = get_state(obs)
         current_state = [state[0], state[1], state[2], state[3], state[4], state[5]]
 

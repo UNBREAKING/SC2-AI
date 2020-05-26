@@ -15,6 +15,8 @@ MINERALFIELD = 341
 TERRAN_COMMAND_CENTER = 18
 TERRAN_SCV = 45
 GEYSER = 342
+SUPPLY_DEPOT = 19
+REFINERY = 20
 
 #Functions
 FUNCTIONS = actions.FUNCTIONS
@@ -89,6 +91,11 @@ def get_state(obs):
 
     mineral = (unit_type == MINERALFIELD)
     vespine = (unit_type == GEYSER)
+    supply_depot = (unit_type == SUPPLY_DEPOT)
+    refinery = (unit_type == REFINERY)
+
+    refinery_y, refinery_x = refinery.nonzero()
+    supply_depot_y, supply_depot_x = supply_depot.nonzero()
     mineral_y, mineral_x = mineral.nonzero()
     vespine_y, vespine_x = vespine.nonzero()
     indexOfVespine = random.randint(0, len(vespine_y) - 1)
@@ -97,13 +104,16 @@ def get_state(obs):
     targetTerranCenter = [terran_center_x.mean(), terran_center_y.mean()]
     targetForBuild = transformLocation(base_top_left,int(terran_center_x.mean()), 20, int(terran_center_y.mean()), 0)
 
+    supply_depot_length = round(len(supply_depot_y) / 112) if supply_depot_y.any() else 0
+    refinery_length = round(len(refinery_y) / 69) if refinery_y.any() else 0
+
     targetScv = None
     scv_y, scv_x = (unit_type == TERRAN_SCV).nonzero()
     if scv_y.any():
       i = random.randint(0, len(scv_y) - 1)
       targetScv = [scv_x[i], scv_y[i]]
 
-    return (mineral_count, vispen_count, supply_limit, scv_count, idle_workers), (canSelectWorker, canGather, canBuildRefinery, canTrainScv, canBuildSupplyDepot, hasIdleWorkers), (mineral_y, mineral_x), targetVespine, targetTerranCenter, targetForBuild, targetScv
+    return (mineral_count, vispen_count, supply_limit, scv_count, idle_workers, supply_depot_length, refinery_length), (canSelectWorker, canGather, canBuildRefinery, canTrainScv, canBuildSupplyDepot, hasIdleWorkers), (mineral_y, mineral_x), targetVespine, targetTerranCenter, targetForBuild, targetScv
 
 class SmartAgent(base_agent.BaseAgent):
     def __init__(self):
@@ -137,9 +147,6 @@ class SmartAgent(base_agent.BaseAgent):
     def step(self, obs):
         super(SmartAgent, self).step(obs)
 
-        self.previous_score = obs.reward
-
-
         state, playerInformation, mineralsPosition, targetVespine, targetTerranCenter, targetForBuild, targetScv = get_state(obs)
         current_state = [state[0], state[1], state[2], state[3], state[4]]
 
@@ -163,7 +170,7 @@ class SmartAgent(base_agent.BaseAgent):
         action = self.qlearn.choose_action(str(current_state))
         smart_action = smart_actions[int(action)]
         
-        self.previous_score = { 'mineral_count': state[0] , 'vispen_count': state[1], 'scv_count': state[3] }
+        self.previous_score = { 'mineral_count': int(state[0]) + ((int(state[3]) - 12) * 50) + (int(state[5]) * 100) + (int(state[6]) * 75), 'vispen_count': state[1], 'scv_count': state[3], 'reward': obs.reward  }
         self.previous_gas_count = state[1]
         self.previous_mineral_count = state[0]
         self.previous_scv_count = state[3]
