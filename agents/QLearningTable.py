@@ -13,7 +13,6 @@ class QLearningTable:
 
         self.q_table = self.load_qtable(load_qt) if path.exists(load_qt) else pd.DataFrame(columns=self.actions, dtype=np.float64)
         self.q_table.index.name = 'state'
-        print(self.q_table)
 
     def save_qtable(self, filepath):
         self.q_table.to_csv(filepath)

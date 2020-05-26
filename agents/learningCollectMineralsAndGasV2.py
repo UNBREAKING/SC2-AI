@@ -81,10 +81,10 @@ def get_state(obs):
     base_top_left = 1 if player_y.any() and player_y.mean() <= 31 else 0
 
     canSelectWorker = 1 if SELECT_IDLE_WORKER in obs.observation['available_actions'] else 0
-    canGather = 1 if GATHER in obs.observation['available_actions'] else 0
-    canBuildRefinery = 1  if BUILD_REFINERY in obs.observation['available_actions'] else 0
-    canTrainScv = 1 if TRAIN_SCV in obs.observation['available_actions'] and supply_limit > scv_count else 0
-    canBuildSupplyDepot = 1 if BUILD_SUPPLY_DEPOT in obs.observation['available_actions'] else 0
+    canGather = 1 if GATHER in obs.observation['available_actions'] and idle_workers > 0 else 0
+    canBuildRefinery = 1  if BUILD_REFINERY in obs.observation['available_actions'] and idle_workers > 0 and mineral_count >= 75 else 0
+    canTrainScv = 1 if TRAIN_SCV in obs.observation['available_actions'] and supply_limit > scv_count and mineral_count >= 50 else 0
+    canBuildSupplyDepot = 1 if BUILD_SUPPLY_DEPOT in obs.observation['available_actions'] and idle_workers > 0 and mineral_count >= 100	else 0
     hasIdleWorkers = 1 if idle_workers > 0 else 0
 
     mineral = (unit_type == MINERALFIELD)
@@ -109,8 +109,8 @@ class SmartAgent(base_agent.BaseAgent):
     def __init__(self):
         super(SmartAgent, self).__init__()
 
-        self.qlearn = QLearningTable(actions=list(range(len(smart_actions))), load_qt= 'learningCollectMineralsAndGas.csv')
-        self.rewardTable = RewardCollector(tableName = 'learningCollectMineralsAndGasReward.csv', columnsRow = ['mineral_count', 'vispen_count', 'scv_count'])
+        self.qlearn = QLearningTable(actions=list(range(len(smart_actions))), load_qt= 'learningCollectMineralsAndGasV2.csv')
+        self.rewardTable = RewardCollector(tableName = 'learningCollectMineralsAndGasV2Reward.csv', columnsRow = ['mineral_count', 'vispen_count', 'scv_count'])
 
 
         self.previous_score = 0
@@ -124,9 +124,9 @@ class SmartAgent(base_agent.BaseAgent):
         self.previous_state = None
     
     def reset(self):
-        self.qlearn.save_qtable('learningCollectMineralsAndGas.csv')
+        self.qlearn.save_qtable('learningCollectMineralsAndGasV2.csv')
         self.rewardTable.collectReward(rewardRow = self.previous_score)
-        self.rewardTable.save_table('learningCollectMineralsAndGasReward.csv')
+        self.rewardTable.save_table('learningCollectMineralsAndGasV2Reward.csv')
         self.previous_score = 0
         self.episodes += 1
         self.previous_mineral_count = 0
@@ -136,9 +136,6 @@ class SmartAgent(base_agent.BaseAgent):
 
     def step(self, obs):
         super(SmartAgent, self).step(obs)
-
-        self.previous_score = obs.reward
-
 
         state, playerInformation, mineralsPosition, targetVespine, targetTerranCenter, targetForBuild, targetScv = get_state(obs)
         current_state = [state[0], state[1], state[2], state[3], state[4], state[5]]
