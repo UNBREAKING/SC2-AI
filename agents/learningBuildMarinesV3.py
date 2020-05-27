@@ -72,6 +72,7 @@ class SmartAgent(base_agent.BaseAgent):
     def get_state(self, obs):
       unit_type = obs.observation.feature_screen[UNIT_TYPE]
       playerInformation = obs.observation['player']
+      userUnits = obs.observation['feature_units']
 
       mineral_count = playerInformation[1]
       vispen_count = playerInformation[2]
@@ -80,6 +81,14 @@ class SmartAgent(base_agent.BaseAgent):
       idle_workers = playerInformation[7]
       army_count = playerInformation[8]
       army_food_taken = playerInformation[5]
+
+
+      barracks = [unit for unit in userUnits if unit.unit_type == BARRACKS]
+
+      print('barracks')
+      print(barracks)
+      print(len(barracks))
+
 
       supply_depot_count = int(round((supply_limit - 15) / 8))
 
@@ -133,8 +142,8 @@ class SmartAgent(base_agent.BaseAgent):
     def __init__(self):
         super(SmartAgent, self).__init__()
 
-        self.qlearn = QLearningTable(actions=list(range(len(smart_actions))), load_qt= 'learningBuildMarinesV2.csv')
-        self.rewardTable = RewardCollector(tableName = 'learningBuildMarinesV2Reward.csv')
+        self.qlearn = QLearningTable(actions=list(range(len(smart_actions))), load_qt= 'learningBuildMarinesV3.csv')
+        self.rewardTable = RewardCollector(tableName = 'learningBuildMarinesV3Reward.csv')
 
         self.previous_score = 0
         self.episodes = 0
@@ -148,9 +157,9 @@ class SmartAgent(base_agent.BaseAgent):
         self.last_build_y = None
     
     def reset(self):
-        self.qlearn.save_qtable('learningBuildMarinesV2.csv')
+        self.qlearn.save_qtable('learningBuildMarinesV3.csv')
         self.rewardTable.collectReward(rewardRow = self.previous_score)
-        self.rewardTable.save_table('learningBuildMarinesV2Reward.csv')
+        self.rewardTable.save_table('learningBuildMarinesV3Reward.csv')
         self.previous_score = 0
         self.episodes += 1
         self.previous_army_count = 0
