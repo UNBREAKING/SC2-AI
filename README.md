@@ -28,3 +28,7 @@
 8. python -m pysc2.bin.agent --map CollectMineralsAndGas --agent learningCollectMineralsAndGasV2.SmartAgent
 9. python -m pysc2.bin.agent --map CollectMineralsAndGas --agent learningCollectMineralsAndGasV3.SmartAgent
 10. python -m pysc2.bin.agent --map BuildMarines --agent learningBuildMarines.SmartAgent
+11. python -m pysc2.bin.agent --map BuildMarines --agent learningBuildMarinesV2.SmartAgent
+12. python -m pysc2.bin.agent --map BuildMarines --agent learningBuildMarinesV3.SmartAgent
+
+

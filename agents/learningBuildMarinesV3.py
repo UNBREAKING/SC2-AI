@@ -72,7 +72,6 @@ class SmartAgent(base_agent.BaseAgent):
     def get_state(self, obs):
       unit_type = obs.observation.feature_screen[UNIT_TYPE]
       playerInformation = obs.observation['player']
-      userUnits = obs.observation['feature_units']
 
       mineral_count = playerInformation[1]
       vispen_count = playerInformation[2]
@@ -81,14 +80,6 @@ class SmartAgent(base_agent.BaseAgent):
       idle_workers = playerInformation[7]
       army_count = playerInformation[8]
       army_food_taken = playerInformation[5]
-
-
-      barracks = [unit for unit in userUnits if unit.unit_type == BARRACKS]
-
-      print('barracks')
-      print(barracks)
-      print(len(barracks))
-
 
       supply_depot_count = int(round((supply_limit - 15) / 8))
 
@@ -178,7 +169,7 @@ class SmartAgent(base_agent.BaseAgent):
             reward = 0
 
             if state[1] > self.previous_army_count :
-                  reward += REWARD_BUILD_MARINE
+                  reward += (state[1] - self.previous_army_count)
             
             self.qlearn.learn(str(self.previous_state), self.previous_action, reward, str(current_state))
 
@@ -205,7 +196,7 @@ class SmartAgent(base_agent.BaseAgent):
 
         elif smart_action == ACTION_SELECT_BARRACKS:
           if targetBarracks:
-            return actions.FunctionCall(SELECT_POINT, [SCREEN, targetBarracks])
+            return FUNCTIONS.select_point("select_all_type", targetBarracks)
 
         elif smart_action == ACTION_TRAIN_MARINE:
           if  playerInformation[5] == 1:
@@ -221,6 +212,6 @@ class SmartAgent(base_agent.BaseAgent):
         
         elif smart_action == ACTION_SELECT_SCV:
           if targetScv:
-            return actions.FunctionCall(SELECT_POINT, [SCREEN, targetScv])
+            return FUNCTIONS.select_point("select", targetScv)
 
         return FUNCTIONS.no_op()
