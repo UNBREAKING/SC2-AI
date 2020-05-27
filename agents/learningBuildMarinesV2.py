@@ -42,8 +42,6 @@ UNIT_TYPE = features.SCREEN_FEATURES.unit_type.index
 ACTION_DO_NOTHING = 'donothing'
 ACTION_SELECT_WORKER = 'selectWorker'
 ACTION_GATHER = 'gather'
-ACTION_SELECT_COMMAND_CENTER = 'selectCommandCenter'
-ACTION_TRAIN_SCV = 'trainScv'
 ACTION_SELECT_SCV = 'selectScv'
 ACTION_BUILD_SUPPLY_DEPOT = 'buildSupplyDepot'
 ACTION_BUILD_BARRACKS = 'buildBarracks'
@@ -54,8 +52,6 @@ smart_actions = [
     ACTION_DO_NOTHING,
     ACTION_SELECT_WORKER,
     ACTION_GATHER,
-    ACTION_SELECT_COMMAND_CENTER,
-    ACTION_TRAIN_SCV,
     ACTION_BUILD_SUPPLY_DEPOT,
     ACTION_SELECT_SCV,
     ACTION_BUILD_BARRACKS,
@@ -64,9 +60,6 @@ smart_actions = [
 ]
 
 REWARD_BUILD_MARINE = 1
-REWARD_BUILD_BARRACKS = 0.5
-REWARD_SCV_BUSY = 0.3
-
 
 def transformLocation(base_top_left, x, x_distance, y, y_distance):
       if not base_top_left:
@@ -74,65 +67,73 @@ def transformLocation(base_top_left, x, x_distance, y, y_distance):
         
       return [x + x_distance, y + y_distance]
 
-def get_state(obs):
-    unit_type = obs.observation.feature_screen[UNIT_TYPE]
-    playerInformation = obs.observation['player']
-
-    mineral_count = playerInformation[1]
-    vispen_count = playerInformation[2]
-    supply_limit = playerInformation[4]
-    scv_count = playerInformation[6]
-    idle_workers = playerInformation[7]
-    army_count = playerInformation[8]
-    army_food_taken = playerInformation[5]
-
-    player_y, player_x = (obs.observation.feature_screen[_AI_RELATIVE] == _AI_SELF).nonzero()
-    base_top_left = 1 if player_y.any() and player_y.mean() <= 31 else 0
-
-    canSelectWorker = 1 if SELECT_IDLE_WORKER in obs.observation['available_actions'] else 0
-    canGather = 1 if GATHER in obs.observation['available_actions'] else 0
-    canBuildBarracks = 1  if BUILD_BARRACKS in obs.observation['available_actions'] else 0
-    canTrainScv = 1 if TRAIN_SCV in obs.observation['available_actions'] and supply_limit > (scv_count + army_food_taken) else 0
-    canBuildSupplyDepot = 1 if BUILD_SUPPLY_DEPOT in obs.observation['available_actions'] else 0
-    canTrainMarine = 1 if TRAIN_MARINE in obs.observation['available_actions'] and supply_limit > (scv_count + army_food_taken) else 0
-
-    barracks_y, barracks_x = (unit_type == BARRACKS).nonzero()
-    mineral_y, mineral_x =  (unit_type == MINERALFIELD).nonzero()
-    terran_center_y, terran_center_x = (unit_type == TERRAN_COMMAND_CENTER).nonzero()
-    targetTerranCenter = [terran_center_x.mean(), terran_center_y.mean()]
-
-    targetBarracks = None
-    if barracks_y.any():
-      i = random.randint(0, len(barracks_y) - 1)
-      targetBarracks = [barracks_x[i].mean(), barracks_y[i].mean()]
-
-    mineralTarget = None
-    if mineral_y.any():
-      i = random.randint(0, len(mineral_y) - 1)
-      mineralTarget = [mineral_x[i], mineral_y[i]]
-
-    targetForBuild = transformLocation(base_top_left,int(terran_center_x.mean()), -10, int(terran_center_y.mean()), 20)
-    targetForBuildBaracks = transformLocation(base_top_left,int(terran_center_x.mean()), 0, int(terran_center_y.mean()), 20)
-
-    barracks_count = round(len(barracks_y)/ 137) if barracks_y.any() else 0
-
-    targetScv = None
-    scv_y, scv_x = (unit_type == TERRAN_SCV).nonzero()
-    if scv_y.any():
-      i = random.randint(0, len(scv_y) - 1)
-      targetScv = [scv_x[i], scv_y[i]]
-
-
-    supply_depot_count = int(round((supply_limit - 15) / 8))
-
-    return (barracks_count, army_count, supply_depot_count, idle_workers), (canSelectWorker, canGather, canBuildBarracks, canTrainScv, canBuildSupplyDepot, canTrainMarine), mineralTarget, targetTerranCenter, targetForBuild, targetScv, targetForBuildBaracks, targetBarracks
 
 class SmartAgent(base_agent.BaseAgent):
+    def get_state(self, obs):
+      unit_type = obs.observation.feature_screen[UNIT_TYPE]
+      playerInformation = obs.observation['player']
+
+      mineral_count = playerInformation[1]
+      vispen_count = playerInformation[2]
+      supply_limit = playerInformation[4]
+      scv_count = playerInformation[6]
+      idle_workers = playerInformation[7]
+      army_count = playerInformation[8]
+      army_food_taken = playerInformation[5]
+
+      supply_depot_count = int(round((supply_limit - 15) / 8))
+
+      player_y, player_x = (obs.observation.feature_screen[_AI_RELATIVE] == _AI_SELF).nonzero()
+      base_top_left = 1 if player_y.any() and player_y.mean() <= 31 else 0
+
+      canSelectWorker = 1 if SELECT_IDLE_WORKER in obs.observation['available_actions'] else 0
+      canGather = 1 if GATHER in obs.observation['available_actions'] else 0
+      canBuildBarracks = 1  if BUILD_BARRACKS in obs.observation['available_actions'] else 0
+      canTrainScv = 1 if TRAIN_SCV in obs.observation['available_actions'] and supply_limit > (scv_count + army_food_taken) else 0
+      canBuildSupplyDepot = 1 if BUILD_SUPPLY_DEPOT in obs.observation['available_actions'] else 0
+      canTrainMarine = 1 if TRAIN_MARINE in obs.observation['available_actions'] and supply_limit > (scv_count + army_food_taken) else 0
+
+      barracks_y, barracks_x = (unit_type == BARRACKS).nonzero()
+      mineral_y, mineral_x =  (unit_type == MINERALFIELD).nonzero()
+      terran_center_y, terran_center_x = (unit_type == TERRAN_COMMAND_CENTER).nonzero()
+      targetTerranCenter = [terran_center_x.mean(), terran_center_y.mean()]
+
+      targetBarracks = None
+      if barracks_y.any():
+        i = random.randint(0, len(barracks_y) - 1)
+        targetBarracks = [barracks_x[i].mean(), barracks_y[i].mean()]
+
+      mineralTarget = None
+      if mineral_y.any():
+        i = random.randint(0, len(mineral_y) - 1)
+        mineralTarget = [mineral_x[i], mineral_y[i]]
+
+      if supply_depot_count == 0:
+        self.last_build_x = int(terran_center_x.mean())
+        self.last_build_y = int(terran_center_y.mean())      
+        targetForBuild = transformLocation(base_top_left, self.last_build_x, -10, self.last_build_y, 20)             
+      else:
+        targetForBuild = transformLocation(base_top_left, self.last_build_x, (supply_depot_count%2)*(10) , self.last_build_y, int((-1)**supply_depot_count*(supply_depot_count%3)*(10)))                
+        self.last_build_x = targetForBuild[0]
+        self.last_build_y = targetForBuild[1]
+
+      targetForBuildBaracks = transformLocation(base_top_left,int(terran_center_x.mean()), 0, int(terran_center_y.mean()), 20)
+
+      barracks_count = round(len(barracks_y)/ 137) if barracks_y.any() else 0
+
+      targetScv = None
+      scv_y, scv_x = (unit_type == TERRAN_SCV).nonzero()
+      if scv_y.any():
+        i = random.randint(0, len(scv_y) - 1)
+        targetScv = [scv_x[i], scv_y[i]]
+
+      return (barracks_count, army_count, supply_depot_count, idle_workers), (canSelectWorker, canGather, canBuildBarracks, canTrainScv, canBuildSupplyDepot, canTrainMarine), mineralTarget, targetTerranCenter, targetForBuild, targetScv, targetForBuildBaracks, targetBarracks
+
     def __init__(self):
         super(SmartAgent, self).__init__()
 
-        self.qlearn = QLearningTable(actions=list(range(len(smart_actions))), load_qt= 'learningBuildMarines.csv')
-        self.rewardTable = RewardCollector(tableName = 'learningBuildMarinesReward.csv')
+        self.qlearn = QLearningTable(actions=list(range(len(smart_actions))), load_qt= 'learningBuildMarinesV2.csv')
+        self.rewardTable = RewardCollector(tableName = 'learningBuildMarinesV2Reward.csv')
 
         self.previous_score = 0
         self.episodes = 0
@@ -142,16 +143,20 @@ class SmartAgent(base_agent.BaseAgent):
 
         self.previous_action = None
         self.previous_state = None
+        self.last_build_x = None
+        self.last_build_y = None
     
     def reset(self):
-        self.qlearn.save_qtable('learningBuildMarines.csv')
+        self.qlearn.save_qtable('learningBuildMarinesV2.csv')
         self.rewardTable.collectReward(rewardRow = self.previous_score)
-        self.rewardTable.save_table('learningBuildMarinesReward.csv')
+        self.rewardTable.save_table('learningBuildMarinesV2Reward.csv')
         self.previous_score = 0
         self.episodes += 1
         self.previous_army_count = 0
         self.previous_barracks_count = 0
         self.previous_idle_workers = 0
+        self.last_build_x = None
+        self.last_build_y = None
 
     def step(self, obs):
         super(SmartAgent, self).step(obs)
@@ -164,12 +169,6 @@ class SmartAgent(base_agent.BaseAgent):
 
             if state[1] > self.previous_army_count :
                   reward += REWARD_BUILD_MARINE
-
-            # if state[0] > self.previous_barracks_count:
-            #     reward += REWARD_BUILD_BARRACKS
-            
-            # if state[3] < self.previous_idle_workers:
-            #     reward += REWARD_SCV_BUSY
             
             self.qlearn.learn(str(self.previous_state), self.previous_action, reward, str(current_state))
 
@@ -194,17 +193,10 @@ class SmartAgent(base_agent.BaseAgent):
         elif smart_action == ACTION_GATHER:
           if playerInformation[1] == 1 and mineralTarget:
             return actions.FunctionCall(GATHER, [SCREEN, mineralTarget])
-            
-        elif smart_action == ACTION_SELECT_COMMAND_CENTER:
-          return actions.FunctionCall(SELECT_POINT, [SCREEN, targetTerranCenter])
 
         elif smart_action == ACTION_SELECT_BARRACKS:
           if targetBarracks:
             return actions.FunctionCall(SELECT_POINT, [SCREEN, targetBarracks])
-
-        elif smart_action == ACTION_TRAIN_SCV:
-          if  playerInformation[3] == 1:
-            return actions.FunctionCall(TRAIN_SCV, [SCREEN])
 
         elif smart_action == ACTION_TRAIN_MARINE:
           if  playerInformation[5] == 1:
