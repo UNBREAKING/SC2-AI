@@ -65,7 +65,7 @@ smart_actions = [
 
 REWARD_BUILD_MARINE = 0.6
 REWARD_BUILD_SCV = 0.6
-REWARD_BUILD_BARRACKS = 0.3
+REWARD_BUILD_BARRACKS = 0.6
 REWARD_SCV_BUSY = 0.3
 
 
@@ -127,14 +127,14 @@ def get_state(obs):
       i = random.randint(0, len(scv_y) - 1)
       targetScv = [scv_x[i], scv_y[i]]
 
-    return (barracks_count, army_count, supply_depot_count, scv_count, army_food_taken, idle_workers), (canSelectWorker, canGather, canBuildBarracks, canTrainScv, canBuildSupplyDepot, canTrainMarine), mineralTarget, targetTerranCenter, targetForBuild, targetScv, targetForBuildBaracks, targetBarracks
+    return (canTrainMarine, army_count, canTrainScv, scv_count, army_food_taken, idle_workers), (canSelectWorker, canGather, canBuildBarracks, canTrainScv, canBuildSupplyDepot, canTrainMarine), mineralTarget, targetTerranCenter, targetForBuild, targetScv, targetForBuildBaracks, targetBarracks
 
 class SmartAgent(base_agent.BaseAgent):
     def __init__(self):
         super(SmartAgent, self).__init__()
 
-        self.qlearn = QLearningTable(actions=list(range(len(smart_actions))), load_qt= 'learningBuildMarinesV4.csv')
-        self.rewardTable = RewardCollector(tableName = 'learningBuildMarinesV4Reward.csv', columnsRow = ['reward', 'workers', 'supply_depot', 'barracks'])
+        self.qlearn = QLearningTable(actions=list(range(len(smart_actions))), load_qt= 'learningBuildMarinesV5.csv')
+        self.rewardTable = RewardCollector(tableName = 'learningBuildMarinesV5Reward.csv', columnsRow = ['reward', 'workers'])
 
         self.previous_score = 0
         self.episodes = 0
@@ -147,9 +147,9 @@ class SmartAgent(base_agent.BaseAgent):
         self.previous_state = None
     
     def reset(self):
-        self.qlearn.save_qtable('learningBuildMarinesV4.csv')
+        self.qlearn.save_qtable('learningBuildMarinesV5.csv')
         self.rewardTable.collectReward(rewardRow = self.previous_score)
-        self.rewardTable.save_table('learningBuildMarinesV4Reward.csv')
+        self.rewardTable.save_table('learningBuildMarinesV5Reward.csv')
         self.previous_score = 0
         self.episodes += 1
         self.previous_army_count = 0
@@ -169,21 +169,22 @@ class SmartAgent(base_agent.BaseAgent):
             if smart_actions[int(self.previous_action)] == ACTION_TRAIN_MARINE and state[4] >= self.previous_army_count:
               reward += REWARD_BUILD_MARINE
 
-            if state[0] > self.previous_barracks_count:
+            if smart_actions[int(self.previous_action)] == ACTION_BUILD_BARRACKS and state[5] < self.previous_idle_workers:
               reward += REWARD_BUILD_BARRACKS
-
-            if state[5] < self.previous_idle_workers:
+            elif smart_actions[int(self.previous_action)] == ACTION_BUILD_SUPPLY_DEPOT and state[5] < self.previous_idle_workers:
+              reward += REWARD_BUILD_BARRACKS
+            elif state[5] < self.previous_idle_workers:
               reward += REWARD_SCV_BUSY
 
             if smart_actions[int(self.previous_action)] == ACTION_TRAIN_SCV and state[3] >= self.previous_workers_count:
-              reward -= REWARD_SCV_BUSY
+              reward -= REWARD_BUILD_SCV
             
             self.qlearn.learn(str(self.previous_state), self.previous_action, reward, str(current_state))
 
         action = self.qlearn.choose_action(str(current_state))
         smart_action = smart_actions[int(action)]
         
-        self.previous_score = { 'reward': state[1], 'workers': state[3], 'supply_depot': state[2], 'barracks': state[0] }
+        self.previous_score = { 'reward': state[1], 'workers': state[3]}
         self.previous_army_count = state[4]
         self.previous_barracks_count = state[0]
         self.previous_idle_workers = state[5]
