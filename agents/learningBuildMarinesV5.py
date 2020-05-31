@@ -98,6 +98,7 @@ def get_state(obs):
     canTrainScv = 1 if TRAIN_SCV in obs.observation['available_actions'] and supply_limit > (scv_count + army_food_taken) else 0
     canBuildSupplyDepot = 1 if BUILD_SUPPLY_DEPOT in obs.observation['available_actions'] else 0
     canTrainMarine = 1 if TRAIN_MARINE in obs.observation['available_actions'] and supply_limit > (scv_count + army_food_taken) else 0
+    isArmyGrows = 1 if army_food_taken > army_count else 0
 
     barracks_y, barracks_x = (unit_type == BARRACKS).nonzero()
     mineral_y, mineral_x =  (unit_type == MINERALFIELD).nonzero()
@@ -127,7 +128,7 @@ def get_state(obs):
       i = random.randint(0, len(scv_y) - 1)
       targetScv = [scv_x[i], scv_y[i]]
 
-    return (canTrainMarine, army_count, canTrainScv, scv_count, army_food_taken, idle_workers), (canSelectWorker, canGather, canBuildBarracks, canTrainScv, canBuildSupplyDepot, canTrainMarine), mineralTarget, targetTerranCenter, targetForBuild, targetScv, targetForBuildBaracks, targetBarracks
+    return (canTrainMarine, army_count, canTrainScv, scv_count, isArmyGrows, idle_workers ), (canSelectWorker, canGather, canBuildBarracks, canTrainScv, canBuildSupplyDepot, canTrainMarine), mineralTarget, targetTerranCenter, targetForBuild, targetScv, targetForBuildBaracks, targetBarracks
 
 class SmartAgent(base_agent.BaseAgent):
     def __init__(self):
@@ -138,7 +139,6 @@ class SmartAgent(base_agent.BaseAgent):
 
         self.previous_score = 0
         self.episodes = 0
-        self.previous_army_count = 0
         self.previous_barracks_count = 0
         self.previous_idle_workers = 0
         self.previous_workers_count = 12
@@ -152,7 +152,6 @@ class SmartAgent(base_agent.BaseAgent):
         self.rewardTable.save_table('learningBuildMarinesV5Reward.csv')
         self.previous_score = 0
         self.episodes += 1
-        self.previous_army_count = 0
         self.previous_barracks_count = 0
         self.previous_idle_workers = 0
         self.previous_workers_count = 12
@@ -166,7 +165,7 @@ class SmartAgent(base_agent.BaseAgent):
         if self.previous_action is not None:
             reward = 0
 
-            if smart_actions[int(self.previous_action)] == ACTION_TRAIN_MARINE and state[4] >= self.previous_army_count:
+            if smart_actions[int(self.previous_action)] == ACTION_TRAIN_MARINE and state[4]:
               reward += REWARD_BUILD_MARINE
 
             if smart_actions[int(self.previous_action)] == ACTION_BUILD_BARRACKS and state[5] < self.previous_idle_workers:
@@ -185,7 +184,6 @@ class SmartAgent(base_agent.BaseAgent):
         smart_action = smart_actions[int(action)]
         
         self.previous_score = { 'reward': state[1], 'workers': state[3]}
-        self.previous_army_count = state[4]
         self.previous_barracks_count = state[0]
         self.previous_idle_workers = state[5]
         self.previous_workers_count = state[3]

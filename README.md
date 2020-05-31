@@ -30,5 +30,7 @@
 10. python -m pysc2.bin.agent --map BuildMarines --agent learningBuildMarines.SmartAgent
 11. python -m pysc2.bin.agent --map BuildMarines --agent learningBuildMarinesV2.SmartAgent
 12. python -m pysc2.bin.agent --map BuildMarines --agent learningBuildMarinesV3.SmartAgent
+13. python -m pysc2.bin.agent --map BuildMarines --agent learningBuildMarinesV4.SmartAgent
+14. python -m pysc2.bin.agent --map BuildMarines --agent learningBuildMarinesV5.SmartAgent
 
 
