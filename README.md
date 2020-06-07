@@ -32,5 +32,6 @@
 12. python -m pysc2.bin.agent --map BuildMarines --agent learningBuildMarinesV3.SmartAgent
 13. python -m pysc2.bin.agent --map BuildMarines --agent learningBuildMarinesV4.SmartAgent
 14. python -m pysc2.bin.agent --map BuildMarines --agent learningBuildMarinesV5.SmartAgent
+15. python RushMarineBot.py - scripted bot with strategy rush marines
 
 

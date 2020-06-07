@@ -4,7 +4,7 @@ import importlib
 import numpy as np
 
 from pysc2.agents import base_agent
-from pysc2.env import sc2_env
+from pysc2.env import sc2_env, run_loop
 from pysc2.lib import actions
 from pysc2.lib import features
 from absl import app
@@ -92,6 +92,7 @@ def transformLocation(base_top_left, x, x_distance, y, y_distance):
 def get_state(obs):
     unit_type = obs.observation.feature_screen[UNIT_TYPE]
     ai_view = obs.observation.feature_screen[_AI_RELATIVE]
+    mini_map = obs.observation.feature_minimap[_AI_RELATIVE]
     playerInformation = obs.observation['player']
 
     mineral_count = playerInformation[1]
@@ -105,13 +106,13 @@ def get_state(obs):
     supply_depot_count = int(round((supply_limit - 15) / 8))
 
     enemyX, enemyY = (ai_view == _AI_ENEMY).nonzero()
-    player_y, player_x = (ai_view == _AI_SELF).nonzero()
+    player_y, player_x = (mini_map == _AI_SELF).nonzero()
     base_top_left = 1 if player_y.any() and player_y.mean() <= 31 else 0
 
-    targetEnemyBase = [19, 23] if base_top_left else [38, 44]
+    targetEnemyBase = [38, 44] if base_top_left else [19, 23]
     
     enemies = get_loc([enemyX, enemyY])
-    targetAttackEnemy = enemies[np.argmax(np.array(enemies)[:, 1])]
+    targetAttackEnemy = enemies[np.argmax(np.array(enemies)[:, 1])] if len(enemyX) > 0 else None
     
     canSelectWorker = 1 if SELECT_IDLE_WORKER in obs.observation['available_actions'] else 0
     canGather = 1 if GATHER in obs.observation['available_actions'] else 0
@@ -119,7 +120,7 @@ def get_state(obs):
     canTrainScv = 1 if TRAIN_SCV in obs.observation['available_actions'] and supply_limit > (scv_count + army_food_taken) else 0
     canBuildSupplyDepot = 1 if BUILD_SUPPLY_DEPOT in obs.observation['available_actions'] else 0
     canTrainMarine = 1 if TRAIN_MARINE in obs.observation['available_actions'] and supply_limit > (scv_count + army_food_taken) else 0
-    canSelectArmy = 1 if len(army_count) > 0 else 0
+    canSelectArmy = 1 if army_count > 0 else 0
     isArmyGrows = 1 if army_food_taken > army_count else 0
     isEnemyVisible = 1 if len(enemyX) > 0 else 0
     canAttack = 1 if ((len(obs.observation.single_select) > 0 and obs.observation.single_select[0][0] == MARINE) or (len(obs.observation.multi_select) > 0 and obs.observation.multi_select[0][0] == MARINE)) and ATTACK_MINIMAP in obs.observation["available_actions"] else 0
@@ -127,7 +128,9 @@ def get_state(obs):
     barracks_y, barracks_x = (unit_type == BARRACKS).nonzero()
     mineral_y, mineral_x =  (unit_type == MINERALFIELD).nonzero()
     terran_center_y, terran_center_x = (unit_type == TERRAN_COMMAND_CENTER).nonzero()
-    targetTerranCenter = [terran_center_x.mean(), terran_center_y.mean()]
+
+
+    targetTerranCenter = [terran_center_x.mean(), terran_center_y.mean()] if terran_center_x.any() else None
 
     targetBarracks = None
     if barracks_y.any():
@@ -140,9 +143,14 @@ def get_state(obs):
       mineralTarget = [mineral_x[i], mineral_y[i]]
 
     x = random.randint(1, 3)
-    targetForBuild = transformLocation(base_top_left, int(terran_center_x.mean()), -10 * x , int(terran_center_y.mean()), 20)                
 
-    targetForBuildBaracks = transformLocation(base_top_left,int(terran_center_x.mean()), 0, int(terran_center_y.mean()), 20)
+    targetForBuild = None
+    if terran_center_x.any(): 
+      targetForBuild = transformLocation(base_top_left, int(terran_center_x.mean()), 10 , int(terran_center_y.mean()), 10)                
+    
+    targetForBuildBaracks = None
+    if terran_center_x.any(): 
+      targetForBuildBaracks = transformLocation(base_top_left,int(terran_center_x.mean()), 0, int(terran_center_y.mean()), 20)
 
     barracks_count = round(len(barracks_y)/ 137) if barracks_y.any() else 0
 
@@ -218,7 +226,7 @@ class SmartAgent(base_agent.BaseAgent):
         self.previous_action = action
         
         
-        if smart_action == ACTION_DO_NOTHING:
+        if smart_action == ACTION_DO_NOTHING or targetTerranCenter == None:
           return FUNCTIONS.no_op()
 
         elif smart_action == ACTION_SELECT_WORKER:
@@ -229,7 +237,7 @@ class SmartAgent(base_agent.BaseAgent):
           if playerInformation[1] == 1 and mineralTarget:
             return actions.FunctionCall(GATHER, [SCREEN, mineralTarget])
             
-        elif smart_action == ACTION_SELECT_COMMAND_CENTER:
+        elif smart_action == ACTION_SELECT_COMMAND_CENTER and targetTerranCenter:
           return actions.FunctionCall(SELECT_POINT, [SCREEN, targetTerranCenter])
 
         elif smart_action == ACTION_SELECT_BARRACKS:
@@ -261,11 +269,11 @@ class SmartAgent(base_agent.BaseAgent):
             return FUNCTIONS.select_army("select")
 
         elif smart_action == ACTION_ATTACK_ENEMY:
-          if state[6] == 1 and state[7] == 1:
+          if state[6] == 1 and state[7] == 1 and targetAttackEnemy:
             return FUNCTIONS.Attack_screen("now", targetAttackEnemy)
         
         elif smart_action == ACTION_ATTACK_BASE:
-          if state[6] == 0 and state[7] == 1:
+          if state[6] == 0 and state[7] == 1 and targetEnemyBase:
             return FUNCTIONS.Attack_screen("now", targetEnemyBase)
 
         return FUNCTIONS.no_op()
@@ -283,17 +291,7 @@ def main(unused_argv):
           step_mul=8,
           game_steps_per_episode=0,
           visualize=True) as env:
-          agent.setup(env.observation_spec(), env.action_spec())
-
-          timesteps = env.reset()
-          agent.reset()
-
-          while True:
-            step_actions = [agent.step(timesteps[0])]
-            if timesteps[0].last():
-              break
-            timesteps = env.step(step_actions)
-
+            run_loop.run_loop([agent], env, max_episodes=1000)
   except KeyboardInterrupt:
     pass
 
