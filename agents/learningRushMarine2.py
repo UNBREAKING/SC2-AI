@@ -46,8 +46,6 @@ UNIT_TYPE = features.SCREEN_FEATURES.unit_type.index
 ACTION_DO_NOTHING = 'donothing'
 ACTION_SELECT_WORKER = 'selectWorker'
 ACTION_GATHER = 'gather'
-ACTION_SELECT_COMMAND_CENTER = 'selectCommandCenter'
-ACTION_TRAIN_SCV = 'trainScv'
 ACTION_SELECT_SCV = 'selectScv'
 ACTION_BUILD_SUPPLY_DEPOT = 'buildSupplyDepot'
 ACTION_BUILD_BARRACKS = 'buildBarracks'
@@ -61,8 +59,6 @@ smart_actions = [
     ACTION_DO_NOTHING,
     ACTION_SELECT_WORKER,
     ACTION_GATHER,
-    ACTION_SELECT_COMMAND_CENTER,
-    ACTION_TRAIN_SCV,
     ACTION_BUILD_SUPPLY_DEPOT,
     ACTION_SELECT_SCV,
     ACTION_BUILD_BARRACKS,
@@ -172,8 +168,8 @@ class SmartAgent(base_agent.BaseAgent):
     def __init__(self):
         super(SmartAgent, self).__init__()
 
-        self.qlearn = QLearningTable(actions=list(range(len(smart_actions))), load_qt= 'learningRushMarine.csv')
-        self.rewardTable = RewardCollector(tableName = 'learningRushMarineReward.csv')
+        self.qlearn = QLearningTable(actions=list(range(len(smart_actions))), load_qt= 'learningRushMarine2.csv')
+        self.rewardTable = RewardCollector(tableName = 'learningRushMarine2Reward.csv')
 
         self.previous_score = 0
         self.episodes = 0
@@ -185,9 +181,9 @@ class SmartAgent(base_agent.BaseAgent):
         self.previous_state = None
     
     def reset(self):
-        self.qlearn.save_qtable('learningRushMarine.csv')
+        self.qlearn.save_qtable('learningRushMarine2.csv')
         self.rewardTable.collectReward(rewardRow = self.previous_score)
-        self.rewardTable.save_table('learningRushMarineReward.csv')
+        self.rewardTable.save_table('learningRushMarine2Reward.csv')
         self.previous_score = 0
         self.episodes += 1
         self.previous_idle_workers = 0
@@ -198,14 +194,13 @@ class SmartAgent(base_agent.BaseAgent):
         super(SmartAgent, self).step(obs)
 
         state, playerInformation, mineralTarget, targetTerranCenter, targetForBuild, targetScv, targetForBuildBaracks, targetBarracks, targetAttackEnemy, targetEnemyBase = get_state(obs)
-        current_state = [state[0], state[1], state[2], state[3], state[4], state[5], state[6]]
+        current_state = [state[1], state[2], state[3], state[4], state[5], state[6]]
 
         if self.previous_action is not None:
             reward = 0
 
             if smart_actions[int(self.previous_action)] == ACTION_TRAIN_MARINE and state[1] and state[6] < 10:
               reward += REWARD_BUILD_MARINE
-
 
             if smart_actions[int(self.previous_action)] == ACTION_BUILD_BARRACKS and state[2] < self.previous_idle_workers:
               reward += REWARD_BUILD_BARRACKS
@@ -217,9 +212,6 @@ class SmartAgent(base_agent.BaseAgent):
             # smart_actions[int(self.previous_action)] == ACTION_ATTACK_ENEMY and 
             if state[5] > self.previus_enemy_count:
               reward += REWARD_KILLED_ENEMY
-
-            if smart_actions[int(self.previous_action)] == ACTION_TRAIN_SCV and state[0] >= self.previous_workers_count:
-              reward -= REWARD_BUILD_SCV
             
             self.qlearn.learn(str(self.previous_state), self.previous_action, reward, str(current_state))
 
@@ -228,7 +220,6 @@ class SmartAgent(base_agent.BaseAgent):
         
         self.previous_score = { 'reward': obs.reward }
         self.previous_idle_workers = state[2]
-        self.previous_workers_count = state[0]
         self.previus_enemy_count = state[5]
         self.previous_state = current_state
         self.previous_action = action
@@ -244,17 +235,10 @@ class SmartAgent(base_agent.BaseAgent):
         elif smart_action == ACTION_GATHER:
           if playerInformation[1] == 1 and mineralTarget:
             return actions.FunctionCall(GATHER, [SCREEN, mineralTarget])
-            
-        elif smart_action == ACTION_SELECT_COMMAND_CENTER and targetTerranCenter:
-          return actions.FunctionCall(SELECT_POINT, [SCREEN, targetTerranCenter])
 
         elif smart_action == ACTION_SELECT_BARRACKS:
           if targetBarracks:
             return FUNCTIONS.select_point("select_all_type", targetBarracks)
-
-        elif smart_action == ACTION_TRAIN_SCV:
-          if  playerInformation[3] == 1:
-            return actions.FunctionCall(TRAIN_SCV, [SCREEN])
 
         elif smart_action == ACTION_TRAIN_MARINE:
           if  playerInformation[5] == 1:

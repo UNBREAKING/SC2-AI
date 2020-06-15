@@ -46,30 +46,26 @@ UNIT_TYPE = features.SCREEN_FEATURES.unit_type.index
 ACTION_DO_NOTHING = 'donothing'
 ACTION_SELECT_WORKER = 'selectWorker'
 ACTION_GATHER = 'gather'
-ACTION_SELECT_COMMAND_CENTER = 'selectCommandCenter'
-ACTION_TRAIN_SCV = 'trainScv'
 ACTION_SELECT_SCV = 'selectScv'
 ACTION_BUILD_SUPPLY_DEPOT = 'buildSupplyDepot'
 ACTION_BUILD_BARRACKS = 'buildBarracks'
 ACTION_TRAIN_MARINE = 'trainMarine'
 ACTION_SELECT_BARRACKS = 'selectBarracks'
 ACTION_SELECT_ARMY = 'selectArmy'
-ACTION_ATTACK_BASE = 'attackBase'
+# ACTION_ATTACK_BASE = 'attackBase'
 ACTION_ATTACK_ENEMY = 'attackEnemy'
 
 smart_actions = [
     ACTION_DO_NOTHING,
     ACTION_SELECT_WORKER,
     ACTION_GATHER,
-    ACTION_SELECT_COMMAND_CENTER,
-    ACTION_TRAIN_SCV,
     ACTION_BUILD_SUPPLY_DEPOT,
     ACTION_SELECT_SCV,
     ACTION_BUILD_BARRACKS,
     ACTION_TRAIN_MARINE,
     ACTION_SELECT_BARRACKS,
     ACTION_SELECT_ARMY,
-    ACTION_ATTACK_BASE,
+    # ACTION_ATTACK_BASE,
     ACTION_ATTACK_ENEMY
 ]
 
@@ -110,15 +106,17 @@ def get_state(obs):
 
     supply_depot_count = int(round((supply_limit - 15) / 8))
 
-    enemyX, enemyY = (ai_view == _AI_ENEMY).nonzero()
+    enemyX, enemyY = (mini_map == _AI_ENEMY).nonzero()
     player_y, player_x = (mini_map == _AI_SELF).nonzero()
     base_top_left = 1 if player_y.any() and player_y.mean() <= 31 else 0
 
     targetEnemyBase = [38, 44] if base_top_left else [19, 23]
     
     enemies = get_loc([enemyX, enemyY])
-    targetAttackEnemy = enemies[np.argmax(np.array(enemies)[:, 1])] if len(enemyX) > 0 else None
-    
+    targetAttackEnemy = None
+    if len(enemyX) > 0:
+      targetAttackEnemy = enemies[np.argmin(np.array(enemies)[:, 0])] if base_top_left == 1 else enemies[np.argmax(np.array(enemies)[:, 0])]
+
     canSelectWorker = 1 if SELECT_IDLE_WORKER in obs.observation['available_actions'] else 0
     canGather = 1 if GATHER in obs.observation['available_actions'] else 0
     canBuildBarracks = 1  if BUILD_BARRACKS in obs.observation['available_actions'] else 0
@@ -166,14 +164,14 @@ def get_state(obs):
       i = random.randint(0, len(scv_y) - 1)
       targetScv = [scv_x[i], scv_y[i]]
 
-    return ( scv_count, isArmyGrows, idle_workers, isEnemyVisible, canAttack, enemies_dead_count, hasArmy ), (canSelectWorker, canGather, canBuildBarracks, canTrainScv, canBuildSupplyDepot, canTrainMarine, canSelectArmy), mineralTarget, targetTerranCenter, targetForBuild, targetScv, targetForBuildBaracks, targetBarracks, targetAttackEnemy, targetEnemyBase
+    return (isArmyGrows, idle_workers, canAttack, enemies_dead_count, hasArmy ), (canSelectWorker, canGather, canBuildBarracks, canTrainScv, canBuildSupplyDepot, canTrainMarine, canSelectArmy), mineralTarget, targetTerranCenter, targetForBuild, targetScv, targetForBuildBaracks, targetBarracks, targetAttackEnemy, targetEnemyBase
 
 class SmartAgent(base_agent.BaseAgent):
     def __init__(self):
         super(SmartAgent, self).__init__()
 
-        self.qlearn = QLearningTable(actions=list(range(len(smart_actions))), load_qt= 'learningRushMarine.csv')
-        self.rewardTable = RewardCollector(tableName = 'learningRushMarineReward.csv')
+        self.qlearn = QLearningTable(actions=list(range(len(smart_actions))), load_qt= 'learningRushMarine3.csv')
+        self.rewardTable = RewardCollector(tableName = 'learningRushMarine3Reward.csv')
 
         self.previous_score = 0
         self.episodes = 0
@@ -185,9 +183,9 @@ class SmartAgent(base_agent.BaseAgent):
         self.previous_state = None
     
     def reset(self):
-        self.qlearn.save_qtable('learningRushMarine.csv')
+        self.qlearn.save_qtable('learningRushMarine3.csv')
         self.rewardTable.collectReward(rewardRow = self.previous_score)
-        self.rewardTable.save_table('learningRushMarineReward.csv')
+        self.rewardTable.save_table('learningRushMarine3Reward.csv')
         self.previous_score = 0
         self.episodes += 1
         self.previous_idle_workers = 0
@@ -198,28 +196,24 @@ class SmartAgent(base_agent.BaseAgent):
         super(SmartAgent, self).step(obs)
 
         state, playerInformation, mineralTarget, targetTerranCenter, targetForBuild, targetScv, targetForBuildBaracks, targetBarracks, targetAttackEnemy, targetEnemyBase = get_state(obs)
-        current_state = [state[0], state[1], state[2], state[3], state[4], state[5], state[6]]
+        current_state = [state[0], state[1], state[2], state[3], state[4]]
 
         if self.previous_action is not None:
             reward = 0
 
-            if smart_actions[int(self.previous_action)] == ACTION_TRAIN_MARINE and state[1] and state[6] < 10:
+            if smart_actions[int(self.previous_action)] == ACTION_TRAIN_MARINE and state[0] and state[4] < 1:
               reward += REWARD_BUILD_MARINE
 
-
-            if smart_actions[int(self.previous_action)] == ACTION_BUILD_BARRACKS and state[2] < self.previous_idle_workers:
+            if smart_actions[int(self.previous_action)] == ACTION_BUILD_BARRACKS and state[1] < self.previous_idle_workers:
               reward += REWARD_BUILD_BARRACKS
-            elif smart_actions[int(self.previous_action)] == ACTION_BUILD_SUPPLY_DEPOT and state[2] < self.previous_idle_workers:
+            elif smart_actions[int(self.previous_action)] == ACTION_BUILD_SUPPLY_DEPOT and state[1] < self.previous_idle_workers:
               reward += REWARD_BUILD_BARRACKS
-            elif state[2] < self.previous_idle_workers:
+            elif state[1] < self.previous_idle_workers:
               reward += REWARD_SCV_BUSY
 
             # smart_actions[int(self.previous_action)] == ACTION_ATTACK_ENEMY and 
-            if state[5] > self.previus_enemy_count:
+            if state[3] > self.previus_enemy_count:
               reward += REWARD_KILLED_ENEMY
-
-            if smart_actions[int(self.previous_action)] == ACTION_TRAIN_SCV and state[0] >= self.previous_workers_count:
-              reward -= REWARD_BUILD_SCV
             
             self.qlearn.learn(str(self.previous_state), self.previous_action, reward, str(current_state))
 
@@ -227,9 +221,8 @@ class SmartAgent(base_agent.BaseAgent):
         smart_action = smart_actions[int(action)]
         
         self.previous_score = { 'reward': obs.reward }
-        self.previous_idle_workers = state[2]
-        self.previous_workers_count = state[0]
-        self.previus_enemy_count = state[5]
+        self.previous_idle_workers = state[1]
+        self.previus_enemy_count = state[3]
         self.previous_state = current_state
         self.previous_action = action
         
@@ -244,17 +237,10 @@ class SmartAgent(base_agent.BaseAgent):
         elif smart_action == ACTION_GATHER:
           if playerInformation[1] == 1 and mineralTarget:
             return actions.FunctionCall(GATHER, [SCREEN, mineralTarget])
-            
-        elif smart_action == ACTION_SELECT_COMMAND_CENTER and targetTerranCenter:
-          return actions.FunctionCall(SELECT_POINT, [SCREEN, targetTerranCenter])
 
         elif smart_action == ACTION_SELECT_BARRACKS:
           if targetBarracks:
             return FUNCTIONS.select_point("select_all_type", targetBarracks)
-
-        elif smart_action == ACTION_TRAIN_SCV:
-          if  playerInformation[3] == 1:
-            return actions.FunctionCall(TRAIN_SCV, [SCREEN])
 
         elif smart_action == ACTION_TRAIN_MARINE:
           if  playerInformation[5] == 1:
@@ -277,12 +263,12 @@ class SmartAgent(base_agent.BaseAgent):
             return FUNCTIONS.select_army("select")
 
         elif smart_action == ACTION_ATTACK_ENEMY:
-          if state[3] == 1 and state[4] == 1 and targetAttackEnemy:
-            return FUNCTIONS.Attack_screen("now", targetAttackEnemy)
+          if state[2] == 1 and targetAttackEnemy:
+            return actions.FunctionCall(ATTACK_MINIMAP, [SCREEN, targetAttackEnemy])
         
-        elif smart_action == ACTION_ATTACK_BASE:
-          if state[4] == 1 and state[6] == 1 and targetEnemyBase:
-            return actions.FunctionCall(ATTACK_MINIMAP, [SCREEN, targetEnemyBase])
+        # elif smart_action == ACTION_ATTACK_BASE:
+        #   if state[2] == 1 and state[4] == 1 and targetEnemyBase:
+        #     return actions.FunctionCall(ATTACK_MINIMAP, [SCREEN, targetEnemyBase])
 
         return FUNCTIONS.no_op()
 
@@ -298,6 +284,7 @@ def main(unused_argv):
           feature_dimensions=features.Dimensions(screen=84, minimap=64)),
           step_mul=8,
           game_steps_per_episode=0,
+          disable_fog=True,
           visualize=True) as env:
             run_loop.run_loop([agent], env, max_episodes=1000)
   except KeyboardInterrupt:
